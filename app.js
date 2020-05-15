@@ -1,8 +1,9 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-
+const jwt = require('jsonwebtoken');
 const path = require('path');
+const User = require('./models/user');
 const projetRoutes = require('./routes/projet');
 const userRoutes = require('./routes/user');
 mongoose.connect('mongodb+srv://matrixfoot:indus789456@cluster0-zghco.mongodb.net/test?retryWrites=true&w=majority',
@@ -27,8 +28,29 @@ mongoose.connect('mongodb+srv://matrixfoot:indus789456@cluster0-zghco.mongodb.ne
       extended: false
     })
   );
+  app.use(async (req, res, next) => {
+    if (req.headers["x-access-token"]) {
+      try {
+        const accessToken = req.headers["x-access-token"];
+        const { userId, exp } = await jwt.verify(accessToken, process.env.JWT_SECRET);
+        // If token has expired
+        if (exp < Date.now().valueOf() / 1000) {
+          return res.status(401).json({
+            error: "JWT token has expired, please login to obtain a new one"
+          });
+        }
+        res.locals.loggedInUser = await User.findById(userId);
+        next();
+      } catch (error) {
+        next(error);
+      }
+    } else {
+      next();
+    }
+  });
   app.use('/api/projet', projetRoutes);
   app.use('/api/auth', userRoutes);
+  app.use('/api/users', userRoutes);
   app.use(express.static(path.join(__dirname, 'images')));
   app.get('*', (request, response) => {
     response.sendFile(path.join(__dirname, 'uploaded fiche'));
