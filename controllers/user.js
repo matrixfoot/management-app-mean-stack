@@ -65,9 +65,9 @@ exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    if (!user) return next(new Error('Email does not exist'));
+    if (!user) return res.status(401).json({ error: 'Utilisateur non trouvé !' });
     const validPassword = await validatePassword(password, user.password);
-    if (!validPassword) return next(new Error('Password is not correct'))
+    if (!validPassword) return res.status(401).json({ error: 'Mot de passe incorrect !' });
     const accessToken = jwt.sign({ userId: user._id }, 'RANDOM_TOKEN_SECRET', {
       expiresIn: "1d"
     });
@@ -77,7 +77,7 @@ exports.login = async (req, res, next) => {
       accessToken
     })
   } catch (error) {
-    next(error);
+    res.status(500).json({ error });
   }
 }
 
